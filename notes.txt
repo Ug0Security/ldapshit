@@ -1,0 +1,3 @@
+enum anon ldap
+grab users 
+bf basic services with user_as_pass
