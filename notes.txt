@@ -1,3 +1,7 @@
-enum anon ldap
-grab users 
+grab dn
+dump anon ldap
+grab users/mails
 bf basic services with user_as_pass
+fast scan if users but no services
+full dump if no users
+skip if no dn
